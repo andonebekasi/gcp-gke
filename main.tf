@@ -1,41 +1,42 @@
-provider "google" {
-  project     = "poc-danamon-devsecops"
-  region      = "asia-southeast2"
+# google_client_config and kubernetes provider must be explicitly specified like the following.
+data "google_client_config" "default" {}
+
+provider "kubernetes" {
+  host                   = "https://${module.gke.endpoint}"
+  token                  = data.google_client_config.default.access_token
+  cluster_ca_certificate = base64decode(module.gke.ca_certificate)
 }
 
-resource "google_compute_subnetwork" "custom" {
-  name          = "test-subnetwork"
-  ip_cidr_range = "10.2.0.0/16"
-  region        = "asia-southeast2"
-  network       = google_compute_network.custom.id
-  secondary_ip_range {
-    range_name    = "services-range"
-    ip_cidr_range = "192.168.1.0/24"
+module "gke" {
+  source                     = "terraform-google-modules/kubernetes-engine/google"
+  project_id                 = "poc-danamon-devsecops"
+  name                       = "gke-prd-cluster"
+  region                     = "asia-southeast2"
+  zones                      = ["asia-southeast2-a", "asia-southeast2-b", "asia-southeast2-c"]
+  network                    = "vpc-danamonprod"
+  subnetwork                 = "vpc-subnetwork-danamonprod"
+  http_load_balancing        = false
+  horizontal_pod_autoscaling = true
+  network_policy             = false
+  ip_range_services          = "asia-southeast2-gke-01-pods"
+  ip_range_pods              = "asia-southeast2-gke-01-services"
+
+  node_pools = [
+    {
+      name                      = "default-node-pool"
+      machine_type              = "e2-medium"
+      node_locations            = "asia-southeast2-a,asia-southeast2-b,asia-southeast2-c"
+      min_count                 = 1
+      max_count                 = 3
+      local_ssd_count           = 0
+      disk_size_gb              = 100
+      disk_type                 = "pd-standard"
+      image_type                = "COS"
+      auto_repair               = true
+      auto_upgrade              = true
+      service_account           = "ridwansulaiman@poc-danamon-devsecops.iam.gserviceaccount.com"
+      preemptible               = false
+      initial_node_count        = 80
+    },
+  ]
   }
-
-  secondary_ip_range {
-    range_name    = "pod-ranges"
-    ip_cidr_range = "192.168.64.0/22"
-  }
-}
-
-resource "google_compute_network" "custom" {
-  name                    = "test-network"
-  auto_create_subnetworks = false
-}
-
-resource "google_container_cluster" "my_vpc_native_cluster" {
-  name               = "my-vpc-native-cluster"
-  location           = "asia-southeast2"
-  initial_node_count = 1
-
-  network    = google_compute_network.custom.id
-  subnetwork = google_compute_subnetwork.custom.id
-
-  ip_allocation_policy {
-    cluster_secondary_range_name  = "services-range"
-    services_secondary_range_name = google_compute_subnetwork.custom.secondary_ip_range.1.range_name
-  }
-
-  # other settings...
-}
