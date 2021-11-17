@@ -18,8 +18,8 @@ module "gke" {
   http_load_balancing        = false
   horizontal_pod_autoscaling = true
   network_policy             = false
-  ip_range_services          = "asia-southeast2-gke-01-pods"
-  ip_range_pods              = "asia-southeast2-gke-01-services"
+  ip_range_services          = "10.30.0.0/16"
+  ip_range_pods              = "10.20.0.0/16"
 
   node_pools = [
     {
