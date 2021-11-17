@@ -34,7 +34,7 @@ module "gke" {
       image_type                = "COS"
       auto_repair               = true
       auto_upgrade              = true
-      service_account           = "716767466996-compute@developer.gserviceaccount.com"
+      service_account           = "ridwansulaiman@poc-danamon-devsecops.iam.gserviceaccount.com"
       preemptible               = false
       initial_node_count        = 80
     },
